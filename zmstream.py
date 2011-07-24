@@ -2,11 +2,20 @@ import select
 import time
 
 class ZMStreamer(object) :
+	ST_FILE = 1
+	ST_SOCKET = 2
+	
 	ZF_FRAME_HEADER = '--ZoneMinderFrame\r\n'
 
-	def __init__(self, timeout) :
+	def __init__(self, timeout, fh, stream_type) :
 		self.timeout = timeout
 		self.chunk = 1024
+		self.fh = fh
+		self.stream_type = stream_type
+		if self.stream_type == self.ST_FILE :
+			self.rf = fh.read
+		if self.stream_type == self.ST_SOCKET :
+			self.rf = fh.recv
 
 	def discard_until(self, buf, fh, including) :
 		buf, dat = self.read_until(buf, fh, including)
@@ -16,7 +25,7 @@ class ZMStreamer(object) :
 		while len(buf) < n :
 			r, w, x = select.select([fh], [], [], self.timeout)
 			if r :
-				buf += fh.read(min(self.chunk, n - len(buf)))
+				buf += self.rf(min(self.chunk, n - len(buf)))
 		dat = buf[0:n]
 		buf = buf[n:]
 		return buf, dat
@@ -25,7 +34,7 @@ class ZMStreamer(object) :
 		while including not in buf :
 			r, w, x = select.select([fh], [], [], self.timeout)
 			if r :
-				buf += fh.read(self.chunk)
+				buf += self.rf(self.chunk)
 		offset = buf.find(including)
 		before_offset = offset + len(including)
 		dat = buf[0:offset]
