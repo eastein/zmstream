@@ -38,10 +38,12 @@ class ZMStreamer(object) :
 			self.stream_type = self.ST_FILE
 
 		self.chunk = 1024
+
+	def rf(self, size) :
 		if self.stream_type == self.ST_FILE :
-			self.rf = self.fh.read
+			return self.fh.read(size)
 		if self.stream_type == self.ST_SOCKET :
-			self.rf = self.fh.recv
+			return self.fh.recv(size)
 
 	def send_all(self, sock, s) :
 		now = 0
