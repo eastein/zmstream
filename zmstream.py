@@ -1,3 +1,5 @@
+import urlparse
+import socket
 import select
 import time
 
@@ -7,15 +9,46 @@ class ZMStreamer(object) :
 	
 	ZF_FRAME_HEADER = '--ZoneMinderFrame\r\n'
 
-	def __init__(self, timeout, fh, stream_type) :
+	def __init__(self, timeout, input_capture) :
 		self.timeout = timeout
-		self.fh = fh
+
+		if input_capture.startswith('http') :
+			o = urlparse.urlparse(input_capture)
+			host = o.netloc.split(':')[0]
+			port = o.port
+			if not port :
+				port = 80
+			else :
+				port = int(port)
+			path = o.path
+			netloc = o.netloc
+			query = o.query
+
+			if query :
+				path = '%s?%s' % (path, query)
+
+			self.fh = socket.create_connection((host, port))
+			request = 'GET %s HTTP/1.1\r\nHost: %s\r\n\r\n' % (path, netloc)
+
+			self.send_all(self.fh, request)
+
+			self.stream_type = self.ST_SOCKET
+		else :
+			self.fh = open(input_capture, 'r')
+			self.stream_type = self.ST_FILE
+
 		self.chunk = 1024
-		self.stream_type = stream_type
 		if self.stream_type == self.ST_FILE :
-			self.rf = fh.read
+			self.rf = self.fh.read
 		if self.stream_type == self.ST_SOCKET :
-			self.rf = fh.recv
+			self.rf = self.fh.recv
+
+	def send_all(self, sock, s) :
+		now = 0
+		need = len(s)
+		# FIXME get some select action going here
+		while now < need :
+			now += sock.send(s[now:])
 
 	def discard_until(self, buf, including) :
 		buf, dat = self.read_until(buf, including)
