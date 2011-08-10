@@ -11,7 +11,8 @@ class ZMStreamer(object) :
 
 	def __init__(self, timeout, input_capture) :
 		self.timeout = timeout
-
+		self.ok = True
+		
 		if input_capture.startswith('http') :
 			o = urlparse.urlparse(input_capture)
 			host = o.netloc.split(':')[0]
@@ -50,6 +51,7 @@ class ZMStreamer(object) :
 		need = len(s)
 		# FIXME get some select action going here
 		while now < need :
+			self.abortcheck()
 			now += sock.send(s[now:])
 
 	def discard_until(self, buf, including) :
@@ -58,6 +60,7 @@ class ZMStreamer(object) :
 
 	def read_bytes(self, buf, n) :
 		while len(buf) < n :
+			self.abortcheck()
 			r, w, x = select.select([self.fh], [], [], self.timeout)
 			if r :
 				buf += self.rf(min(self.chunk, n - len(buf)))
@@ -67,6 +70,7 @@ class ZMStreamer(object) :
 
 	def read_until(self, buf, including) :
 		while including not in buf :
+			self.abortcheck()
 			r, w, x = select.select([self.fh], [], [], self.timeout)
 			if r :
 				buf += self.rf(self.chunk)
@@ -75,6 +79,10 @@ class ZMStreamer(object) :
 		dat = buf[0:offset]
 		buf = buf[before_offset:]
 		return buf, dat
+
+	def abortcheck(self) :
+		if not self.ok :
+			raise StopIteration
 
 	def generate(self) :
 		buf = ''
@@ -85,6 +93,7 @@ class ZMStreamer(object) :
 			header = True
 			headers = {}
 			while header :
+				self.abortcheck()
 				buf, header = self.read_until(buf, '\r\n')
 				if header :
 					header = header.lower()
@@ -109,3 +118,5 @@ class ZMStreamer(object) :
 				buf, body = self.read_until(buf, ZMStreamer.ZF_FRAME_HEADER)
 
 			yield body
+
+			self.abortcheck()
