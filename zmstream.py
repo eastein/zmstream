@@ -3,14 +3,18 @@ import socket
 import select
 import time
 
+class Timeout(Exception) :
+	pass
+
 class ZMStreamer(object) :
 	ST_FILE = 1
 	ST_SOCKET = 2
 	
 	ZF_FRAME_HEADER = '--ZoneMinderFrame\r\n'
 
-	def __init__(self, timeout, input_capture) :
+	def __init__(self, timeout, input_capture, failure_timeout=10) :
 		self.timeout = timeout
+		self.failure_timeout = failure_timeout
 		self.ok = True
 		
 		if input_capture.startswith('http') :
@@ -39,6 +43,13 @@ class ZMStreamer(object) :
 			self.stream_type = self.ST_FILE
 
 		self.chunk = 1024
+
+	def __del__(self) :
+		if hasattr(self, 'fh') :
+			try :
+				self.fh.close()
+			except :
+				pass
 
 	def rf(self, size) :
 		if self.stream_type == self.ST_FILE :
@@ -83,11 +94,16 @@ class ZMStreamer(object) :
 	def abortcheck(self) :
 		if not self.ok :
 			raise StopIteration
+		if hasattr(self, 'abort_ts') :
+			if time.time() > self.abort_ts :
+				raise Timeout
 
 	def generate(self) :
 		buf = ''
 		# first, read until there's a ZF_FRAME_HEADER
 		while True :
+			self.abort_ts = time.time() + self.failure_timeout
+			
 			# we haven't already aligned to a zoneminder frame. align now.
 			buf = self.discard_until(buf, ZMStreamer.ZF_FRAME_HEADER)
 			header = True
