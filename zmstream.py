@@ -2,16 +2,22 @@ import urlparse
 import socket
 import select
 import time
+import base64
 
 class ZMStreamer(object) :
 	ST_FILE = 1
 	ST_SOCKET = 2
 	
-	ZF_FRAME_HEADER = '--ZoneMinderFrame\r\n'
+	ZF_FRAME_HEADER = '--%s\r\n'
 
-	def __init__(self, timeout, input_capture) :
+	def __init__(self, timeout, input_capture, auth=None, boundary=None) :
 		self.timeout = timeout
 		self.ok = True
+		self.auth = auth
+		if boundary :
+			self.boundary = boundary
+		else :
+			self.boundary = 'ZoneMinderFrame'
 		
 		if input_capture.startswith('http') :
 			o = urlparse.urlparse(input_capture)
@@ -28,8 +34,12 @@ class ZMStreamer(object) :
 			if query :
 				path = '%s?%s' % (path, query)
 
+			basic_auth = ''
+			if auth :
+				basic_auth = '\r\nAuthorization: Basic %s' % base64.b64encode('%s:%s' % (auth[0], auth[1]))
+
 			self.fh = socket.create_connection((host, port))
-			request = 'GET %s HTTP/1.1\r\nHost: %s\r\n\r\n' % (path, netloc)
+			request = 'GET %s HTTP/1.1\r\nHost: %s%s\r\n\r\n' % (path, netloc, basic_auth)
 
 			self.send_all(self.fh, request)
 
@@ -42,9 +52,10 @@ class ZMStreamer(object) :
 
 	def rf(self, size) :
 		if self.stream_type == self.ST_FILE :
-			return self.fh.read(size)
+			r = self.fh.read(size)
 		if self.stream_type == self.ST_SOCKET :
-			return self.fh.recv(size)
+			r = self.fh.recv(size)
+		return r
 
 	def send_all(self, sock, s) :
 		now = 0
@@ -89,7 +100,7 @@ class ZMStreamer(object) :
 		# first, read until there's a ZF_FRAME_HEADER
 		while True :
 			# we haven't already aligned to a zoneminder frame. align now.
-			buf = self.discard_until(buf, ZMStreamer.ZF_FRAME_HEADER)
+			buf = self.discard_until(buf, ZMStreamer.ZF_FRAME_HEADER % self.boundary)
 			header = True
 			headers = {}
 			while header :
@@ -115,7 +126,7 @@ class ZMStreamer(object) :
 			if cl is not None :
 				buf, body = self.read_bytes(buf, cl)
 			else :
-				buf, body = self.read_until(buf, ZMStreamer.ZF_FRAME_HEADER)
+				buf, body = self.read_until(buf, (ZMStreamer.ZF_FRAME_HEADER % self.boundary))
 
 			yield body
 
