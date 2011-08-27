@@ -13,7 +13,7 @@ class ZMStreamer(object) :
 	ST_FILE = 1
 	ST_SOCKET = 2
 	
-	ZF_FRAME_HEADER = '--%s\r\n'
+	ZF_FRAME_HEADER = '%s\r\n'
 
 	def __init__(self, timeout, input_capture, failure_timeout=10, auth=None, boundary=None) :
 		self.timeout = timeout
@@ -22,9 +22,9 @@ class ZMStreamer(object) :
 		self.ok = True
 		self.auth = auth
 		if boundary :
-			self.boundary = boundary
+			self.boundary = '--' + boundary
 		else :
-			self.boundary = 'ZoneMinderFrame'
+			self.boundary = None
 		
 	def __del__(self) :
 		if hasattr(self, 'fh') :
@@ -118,7 +118,18 @@ class ZMStreamer(object) :
 
 
 		try :
+			self.abort_ts = time.time() + self.failure_timeout
 			buf = ''
+
+			# do we need to auto-detect?
+			if self.boundary is None :
+				buf = self.discard_until(buf, '\r\n\r\n')
+
+				buf, self.boundary = self.read_until(buf, '\r\n')
+
+				# boundary now has the boundary line in it. great! now put it back so we can align (jumping into the cycle below)
+				buf = self.boundary + '\r\n' + buf
+
 			# first, read until there's a ZF_FRAME_HEADER
 			while True :
 				self.abort_ts = time.time() + self.failure_timeout
