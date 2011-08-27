@@ -6,7 +6,13 @@ import base64
 import threading
 import Queue
 
-class Timeout(Exception) :
+class ZMSException(Exception) :
+	pass
+
+class Timeout(ZMSException) :
+	pass
+
+class BadProtocol(ZMSException) :
 	pass
 
 class ZMStreamer(object) :
@@ -87,12 +93,17 @@ class ZMStreamer(object) :
 	def generate(self) :
 		if self.input_capture.startswith('http') :
 			o = urlparse.urlparse(self.input_capture)
+
+			if o.scheme != 'http' :
+				raise BadProtocol("only http supported")
+
 			host = o.netloc.split(':')[0]
 			port = o.port
 			if not port :
 				port = 80
 			else :
 				port = int(port)
+
 			path = o.path
 			netloc = o.netloc
 			query = o.query
@@ -104,6 +115,8 @@ class ZMStreamer(object) :
 			if self.auth :
 				basic_auth = '\r\nAuthorization: Basic %s' % base64.b64encode('%s:%s' % (self.auth[0], self.auth[1]))
 
+			# for the curious: the reason I'm not using urllib2 here is that I can't use
+			# select on the stream it creates.  I'd prefer to use it, but them's the breaks and this works.
 			self.fh = socket.create_connection((host, port))
 			request = 'GET %s HTTP/1.1\r\nHost: %s%s\r\n\r\n' % (path, netloc, basic_auth)
 
