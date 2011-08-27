@@ -1,15 +1,24 @@
-ZMStream is a library for creating creating an iterable object for image
-frames from a ZoneMinder stream.
+<A name="toc1-0" title="Purpose" />
+# Purpose
 
-<A name="toc2-4" title="Platforms" />
-Platforms
--------------------
+ZMStream is a library for creating creating an iterable object for image frames from a ZoneMinder stream or other motion jpeg stream.
 
-ZMStream has been tested to work on Ubuntu 10.04 and Debian Squeeze, using CPython 2.6.
+<A name="toc1-5" title="Platforms" />
+# Platforms
 
-<A name="toc2-10" title="Examples" />
-Examples
--------------------
+ZMStream has been tested to work on Ubuntu 10.04 and Debian Squeeze, using CPython 2.6.  Centos 6 is known to work as well.
+
+<A name="toc1-10" title="Examples" />
+# Examples
 
 * Please see test.py for an example.
 * Another use case for zmstream is lidless (https://github.com/eastein/lidless).
+
+<A name="toc1-16" title="Camera / Source Compatibility" />
+# Camera / Source Compatibility
+
+Known to work:
+
+* ZoneMinder 1.24.2
+* Rosewill RXS-3211
+* ABS MegaCam ABS-4210
