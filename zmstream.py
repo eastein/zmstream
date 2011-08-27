@@ -188,17 +188,27 @@ class TimestampingThrottle(threading.Thread) :
 			self.q.put(ZMThrottle.TIMEOUT)
 
 	def qcheck(self, v) :
-		if v == ZMThrottle.TIMEOUT :
-			raise Timeout
-		elif v == ZMThrottle.SHUTDOWN :
+		if not self.ok or v == ZMThrottle.SHUTDOWN :
 			raise StopIteration
+		elif v == ZMThrottle.TIMEOUT :
+			raise Timeout
+
+	def qg(self, real_timeout, parts) :
+		# wait up to real_timeout total, but cut it into parts so we can quit in the middle.
+		pt = real_timeout / float(parts)
+		for i in range(parts) :
+			try :
+				return self.q.get(timeout=pt)
+			except Queue.Empty :
+				if not self.ok :
+					raise StopIteration		
 
 	def get(self) :
 		if not self.ok :
 			raise StopIteration
 		
 		try :
-			v = self.q.get(timeout=self.failure_timeout)
+			v = self.qg(self.failure_timeout, 20)
 			self.qcheck(v)
 			while True :
 				try :
@@ -207,7 +217,9 @@ class TimestampingThrottle(threading.Thread) :
 				except Queue.Empty :
 					return v
 		except Queue.Empty :
-			raise Timeout
+			if self.ok :
+				raise Timeout
+			raise StopIteration
 
 	def generate(self) :
 		while True :
