@@ -1,3 +1,5 @@
+import threading
+import time
 import sys
 import zmstream
 
@@ -10,6 +12,7 @@ try :
 except IndexError :
 	pass
 
+boundary = None
 try :
 	boundary = sys.argv[5]
 except IndexError :
@@ -17,19 +20,24 @@ except IndexError :
 
 ext = 'jpg'
 
-zms = zmstream.ZMStreamer(1, input_capture, auth=auth, boundary=boundary)
+zms = zmstream.ZMThrottle(1, input_capture, auth=auth, boundary=boundary)
+zms.start()
+
+i = 0
 
 try :
-	s = zms.generate()
-	i = 0
-	for frame in s :
+	for ts, frame in zms.generate() :
 		i += 1
 		filename = '%s.%06d.%s' % (output_prefix, i, ext)
-		print 'writing %s' % filename
+
+		print 'writing %s, ts delta is %0.3f' % (filename, time.time() - ts)
 		fhw = open(filename, 'w')
 		try :
 			fhw.write(frame)
 		finally :
 			fhw.close()
+
+		time.sleep(1)
 finally :
-	zms.fh.close()
+	zms.stop()
+	zms.join()
