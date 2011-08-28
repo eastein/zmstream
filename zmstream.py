@@ -9,10 +9,16 @@ import Queue
 class ZMSException(Exception) :
 	pass
 
-class Timeout(ZMSException) :
+class BadProtocol(ZMSException) :
 	pass
 
-class BadProtocol(ZMSException) :
+class RemoteError(ZMSException) :
+	pass
+
+class Timeout(RemoteError) :
+	pass
+
+class SocketError(RemoteError) :
 	pass
 
 class ZMStreamer(object) :
@@ -129,7 +135,6 @@ class ZMStreamer(object) :
 
 		self.chunk = 1024
 
-
 		try :
 			self.abort_ts = time.time() + self.failure_timeout
 			buf = ''
@@ -185,6 +190,7 @@ class ZMStreamer(object) :
 class TimestampingThrottle(threading.Thread) :
 	SHUTDOWN=1
 	TIMEOUT=2
+	SOCKETERROR=3
 	
 	# FIXME add auto restart?
 	def __init__(self, generator, generatorstop=None, failure_timeout=10) :
@@ -205,17 +211,21 @@ class TimestampingThrottle(threading.Thread) :
 			# TODO catch exceptions here and offer a hook to call when this is dying
 			for frame in self.generator :
 				if not self.ok :
-					self.q.put(ZMThrottle.SHUTDOWN)
+					self.q.put(TimestampingThrottle.SHUTDOWN)
 					break
 				self.q.put((time.time(), frame))
 		except Timeout :
-			self.q.put(ZMThrottle.TIMEOUT)
+			self.q.put(TimestampingThrottle.TIMEOUT)
+		except socket.error, se :
+			self.q.put(TimestampingThrottle.SOCKETERROR)
 
 	def qcheck(self, v) :
-		if not self.ok or v == ZMThrottle.SHUTDOWN :
+		if not self.ok or v == TimestampingThrottle.SHUTDOWN :
 			raise StopIteration
-		elif v == ZMThrottle.TIMEOUT :
+		elif v == TimestampingThrottle.TIMEOUT :
 			raise Timeout
+		elif v == TimestampingThrottle.SOCKETERROR :
+			raise SocketError
 
 	def qg(self, real_timeout, parts) :
 		# wait up to real_timeout total, but cut it into parts so we can quit in the middle.
@@ -226,6 +236,7 @@ class TimestampingThrottle(threading.Thread) :
 			except Queue.Empty :
 				if not self.ok :
 					raise StopIteration		
+		raise Queue.Empty
 
 	def get(self) :
 		if not self.ok :
