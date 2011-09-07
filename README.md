@@ -6,7 +6,7 @@ ZMStream is a library for creating creating an iterable object for image frames 
 <A name="toc1-5" title="Platforms" />
 # Platforms
 
-ZMStream has been tested to work on Ubuntu 10.04 and Debian Squeeze, using CPython 2.6.  Centos 6 is known to work as well.
+ZMStream has been tested to work on Ubuntu 10.04 and Debian Squeeze, using CPython 2.6.x and 2.7.x.  Centos 6 is known to work as well.
 
 <A name="toc1-10" title="Examples" />
 # Examples
@@ -19,6 +19,6 @@ ZMStream has been tested to work on Ubuntu 10.04 and Debian Squeeze, using CPyth
 
 Known to work:
 
-* ZoneMinder 1.24.2
+* ZoneMinder 1.24.x
 * Rosewill RXS-3211
 * ABS MegaCam ABS-4210
