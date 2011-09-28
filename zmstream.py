@@ -5,6 +5,7 @@ import time
 import base64
 import threading
 import Queue
+import zmhash
 
 class ZMSException(Exception) :
 	pass
@@ -27,12 +28,14 @@ class ZMStreamer(object) :
 	
 	ZF_FRAME_HEADER = '%s\r\n'
 
-	def __init__(self, timeout, input_capture, failure_timeout=10, auth=None, boundary=None) :
+	# TODO handle when the hash secret is given but no auth, that's broken
+	def __init__(self, timeout, input_capture, failure_timeout=10, auth=None, zm_auth_hash_secret=None, boundary=None) :
 		self.timeout = timeout
 		self.input_capture = input_capture
 		self.failure_timeout = failure_timeout
 		self.ok = True
 		self.auth = auth
+		self.zm_auth_hash_secret = zm_auth_hash_secret
 		if boundary :
 			self.boundary = '--' + boundary
 		else :
@@ -119,7 +122,10 @@ class ZMStreamer(object) :
 
 			basic_auth = ''
 			if self.auth :
-				basic_auth = '\r\nAuthorization: Basic %s' % base64.b64encode('%s:%s' % (self.auth[0], self.auth[1]))
+				if self.zm_auth_hash_secret :
+					path += zmhash.authtoken(self.zm_auth_hash_secret, self.auth[0], self.auth[1])
+				else :
+					basic_auth = '\r\nAuthorization: Basic %s' % base64.b64encode('%s:%s' % (self.auth[0], self.auth[1]))
 
 			# for the curious: the reason I'm not using urllib2 here is that I can't use
 			# select on the stream it creates.  I'd prefer to use it, but them's the breaks and this works.
