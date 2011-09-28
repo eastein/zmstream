@@ -9,6 +9,4 @@ def authtoken(secret, username, pwhash) :
 	grist += str(t.tm_mon - 1)
 	grist += str(t.tm_year - 1900)
 
-	print grist
-
 	return hashlib.md5(grist).hexdigest()
