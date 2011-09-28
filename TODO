@@ -1,2 +1,0 @@
-* fix select, or test with a TCP connection - select tightloops on a normal file descriptor or does not detect EOF
-* deal with timeouts on TCP connections
