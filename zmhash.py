@@ -1,9 +1,9 @@
 import hashlib
 import time
 
-def authtoken(secret, username, pwhash) :
+def authtoken(secret, username, password) :
 	t = time.localtime()
-	grist = secret + username + pwhash
+	grist = secret + username + '*' + hashlib.sha1(hashlib.sha1(password).digest()).hexdigest().upper()
 	grist += str(t.tm_hour)
 	grist += str(t.tm_mday)
 	grist += str(t.tm_mon - 1)
