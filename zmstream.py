@@ -58,10 +58,11 @@ class ZMStreamer(object) :
 	def send_all(self, sock, s) :
 		now = 0
 		need = len(s)
-		# FIXME get some select action going here
 		while now < need :
 			self.abortcheck()
-			now += sock.send(s[now:])
+			r, w, x = select.select([], [sock], [], self.timeout)
+			if w :
+				now += sock.send(s[now:])
 
 	def discard_until(self, buf, including) :
 		buf, dat = self.read_until(buf, including)
@@ -198,7 +199,6 @@ class TimestampingThrottle(threading.Thread) :
 	TIMEOUT=2
 	SOCKETERROR=3
 	
-	# FIXME add auto restart?
 	def __init__(self, generator, generatorstop=None, failure_timeout=10) :
 		self.failure_timeout = failure_timeout
 		self.ok = True
