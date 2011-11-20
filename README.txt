@@ -1,6 +1,11 @@
 # Purpose
 
-ZMStream is a library for creating creating an iterable object for image frames from a ZoneMinder stream or other motion jpeg stream.
+ZMStream is a library for creating creating an iterable object for image frames from a ZoneMinder stream, other motion jpeg stream, or anything FFMPEG can handle.  Frames are emitted as `PIL.Image.Image` objects.
+
+# Dependencies
+
+* PIL
+* pyffmpeg (http://code.google.com/p/pyffmpeg/) if `Mode.FFMPEG` is used.
 
 # Platforms
 
@@ -15,6 +20,6 @@ ZMStream has been tested to work on Ubuntu 10.04 and Debian Squeeze, using CPyth
 
 Known to work:
 
-* ZoneMinder 1.24.x
+* ZoneMinder 1.22.x, 1.24.x
 * Rosewill RXS-3211
 * ABS MegaCam ABS-4210

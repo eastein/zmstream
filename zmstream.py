@@ -6,6 +6,7 @@ import base64
 import threading
 import Queue
 import zmhash
+import ImageFile
 
 class ZMSException(Exception) :
 	pass
@@ -22,6 +23,18 @@ class Timeout(RemoteError) :
 class SocketError(RemoteError) :
 	pass
 
+class Mode(object) :
+	MJPEG = 1
+	FFMPEG = 2
+
+	st_min = 1
+	st_max = 2
+
+	@classmethod
+	def check(cls, st) :
+		assert isinstance(st, int)
+		assert (st >= Mode.st_min and st <= Mode.st_max)
+
 class ZMStreamer(object) :
 	ST_FILE = 1
 	ST_SOCKET = 2
@@ -29,7 +42,7 @@ class ZMStreamer(object) :
 	ZF_FRAME_HEADER = '%s\r\n'
 
 	# TODO handle when the hash secret is given but no auth, that's broken
-	def __init__(self, timeout, input_capture, failure_timeout=10, auth=None, zm_auth_hash_secret=None, boundary=None) :
+	def __init__(self, timeout, input_capture, failure_timeout=10, auth=None, zm_auth_hash_secret=None, boundary=None, mode=Mode.MJPEG) :
 		self.timeout = timeout
 		self.input_capture = input_capture
 		self.failure_timeout = failure_timeout
@@ -40,7 +53,9 @@ class ZMStreamer(object) :
 			self.boundary = '--' + boundary
 		else :
 			self.boundary = None
-		
+		Mode.check(mode)
+		self.mode = mode
+
 	def __del__(self) :
 		if hasattr(self, 'fh') :
 			try :
@@ -101,6 +116,26 @@ class ZMStreamer(object) :
 				raise Timeout
 
 	def generate(self) :
+		if self.mode == Mode.MJPEG :
+			for f in self.generate_mjpeg() :
+				yield f
+		elif self.mode == Mode.FFMPEG :
+			for f in self.generate_ffmpeg() :
+				yield f
+		else :
+			assert False # what are you even doing, user? Do not meddle with the affairs of dragons.
+
+	def generate_ffmpeg(self) :
+		import pyffmpeg
+		stream = pyffmpeg.VideoStream()
+		stream.open(self.input_capture)
+		frame = 0
+		while True :
+			self.abortcheck()
+			yield stream.GetFrameNo(frame)
+			frame += 1
+
+	def generate_mjpeg(self) :
 		if self.input_capture.startswith('http') :
 			o = urlparse.urlparse(self.input_capture)
 
@@ -188,7 +223,9 @@ class ZMStreamer(object) :
 				else :
 					buf, body = self.read_until(buf, (ZMStreamer.ZF_FRAME_HEADER % self.boundary))
 
-				yield body
+				p = ImageFile.Parser()
+				p.feed(body)
+				yield p.close()
 
 				self.abortcheck()
 		finally :
