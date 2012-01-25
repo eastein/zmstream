@@ -3,6 +3,7 @@ import socket
 import select
 import time
 import base64
+import os, os.path
 import threading
 import Queue
 import zmhash
@@ -26,9 +27,10 @@ class SocketError(RemoteError) :
 class Mode(object) :
 	MJPEG = 1
 	FFMPEG = 2
+	IMAGESDIR = 3
 
 	st_min = 1
-	st_max = 2
+	st_max = 3
 
 	@classmethod
 	def check(cls, st) :
@@ -122,9 +124,33 @@ class ZMStreamer(object) :
 		elif self.mode == Mode.FFMPEG :
 			for f in self.generate_ffmpeg() :
 				yield f
+		elif self.mode == Mode.IMAGESDIR :
+			for f in self.generate_imagesdir() :
+				yield f
 		else :
 			assert False # what are you even doing, user? Do not meddle with the affairs of dragons.
 
+	def generate_imagesdir(self) :
+		existing_files = set(os.listdir(self.input_capture))
+		while True :
+			now_files = set(os.listdir(self.input_capture))
+
+			# support JPG and PNG for now
+			new_files = [fn for fn in list(now_files - existing_files) if (fn.lower().endswith('.jpg') or fn.lower().endswith('.jpeg') or fn.lower().endswith('.png'))]
+
+			if new_files :
+				# Assumes that files are sorted sequentially.... if not, too bad. Everything will be wrong.
+				new_files.sort()
+				for f in new_files :
+					p = ImageFile.Parser()
+					p.feed(open(os.path.join(self.input_capture, f)).read())
+					yield p.close()
+			else :
+				time.sleep(0.05)
+			
+			# save 'now'
+			existing_files = now_files
+			
 	def generate_ffmpeg(self) :
 		import pyffmpeg
 		stream = pyffmpeg.VideoStream()
