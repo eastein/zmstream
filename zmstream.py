@@ -133,6 +133,8 @@ class ZMStreamer(object) :
 	def generate_imagesdir(self) :
 		existing_files = set(os.listdir(self.input_capture))
 		while True :
+			self.abortcheck()
+			
 			now_files = set(os.listdir(self.input_capture))
 
 			# support JPG and PNG for now
