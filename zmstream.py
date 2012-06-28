@@ -156,7 +156,7 @@ class ZMStreamer(object) :
 	def generate_ffmpeg(self) :
 		import pyffmpeg
 		stream = pyffmpeg.VideoStream()
-		stream.open(self.input_capture)
+		stream.open(self.input_capture.encode('ascii', 'ignore'))
 		frame = 0
 		while True :
 			self.abortcheck()
