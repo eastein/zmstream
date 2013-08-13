@@ -8,6 +8,7 @@ import threading
 import Queue
 import zmhash
 import ImageFile
+import socket
 
 class ZMSException(Exception) :
 	pass
@@ -335,3 +336,103 @@ class ZMThrottle(TimestampingThrottle) :
 	def __init__(self, *args, **kwargs) :
 		zms = ZMStreamer(*args, **kwargs)
 		TimestampingThrottle.__init__(self, zms.generate(), zms.stop, failure_timeout=zms.failure_timeout)
+
+
+class Server(threading.Thread) :
+	"""
+	Given a set of sockets that are bound already, accept connections on them and serve
+	HTTP motion jpeg over them.
+
+	Do frame drops, so if the remote client falls behind only
+	queue QUEUE_FRAMEs frame for sending per stream.  Time out frame transmissions at FRAME_TIMEOUT_MULT
+ 	times the time per frame, at which point the server will close the connection to the client.
+
+	Time per frame should be a running average based on how much time elapsed between
+	the completions of the inbound copies of the last FPS_TIMING_FRAMES frames. Until this
+	has been established, fps will be assumed to be DEFAULT_FPS.
+
+	Later features: handle more than one stream per socket; right now, we don't have any dispatch. One server is
+	for one stream.
+	"""
+
+	FRAME_TIMEOUT_MULT = 30
+	FPS_TIMING_FRAMES = 10
+	DEFAULT_FPS = 10
+	QUEUE_FRAMES = 1
+
+	class RetransmitterThread(threading.Thread) :
+		def __init__(self, src, dst, autorun=True) :
+			self.ok = True
+			self.src = src
+			self.dst = dst
+			threading.Thread.__init__(self)
+			if autorun :
+				self.start()
+		
+		def stop(self) :
+			self.ok = False
+
+		def run(self) :
+			while self.ok :
+				for img in self.src.generate() :
+					self.dst.send(img)
+
+	class Conn(object) :
+		class State :
+			# perspective is always the server's perspective, not the client.
+			
+			OPENED = 0    # connection is opened, but isn't ready to send frames to yet
+			READY = 1     # connection is ready to send a new frame
+			RECVING = 2   # connection is recving into the inbuf
+			SENDING = 3   # connection is sending from the outbuf
+
+		def __init__(self, server, sock, addr) :
+			self.server = server
+			self.sock = sock
+			self.addr = addr
+			self.inbuf = str()
+			self.outbuf = str()
+			self.fq = Queue.Queue(maxsize=server.QUEUE_FRAMES)
+			self.set_state(self.State.OPENED)
+
+		def set_state(self, st) :
+			self.state = st
+			self.state_time = time.time()
+
+		def tick(self) :
+			pass
+			# TODO implement; this function will be called on each connection object after every
+			# IO phase of the thread, and should perform no blocking operations. It should also avoid
+			# spending too much CPU time.
+	
+	def __init__(self, socket, autorun=True) :
+		self.fps = self.DEFAULT_FPS
+		self.socket = socket
+		self.conns = set()
+
+		self.ok = True
+		threading.Thread.__init__(self)
+		if autorun :
+			self.start()
+
+	def sendfrom(self, src, autorun=True) :
+		return RetransmitterThread(src, self, autorun=autorun)
+
+	def send(self, img) :
+		# TODO handle opencv, string (assumed to be jpeg data), PIL image. For now take jpeg string only.
+		
+		print time.ctime(), "SENDING A FRAME [fake]" # FIXME either log or something else
+
+	def stop(self) :
+		self.ok = False
+
+	def run(self) :
+		while self.ok :
+			try :
+				sock, addr = self.socket.accept()
+
+				self.conns.add(self.Conn(self, sock, addr))
+
+			except socket.timeout :
+				print time.ctime(), 'timeout on accept' # FIXME either log or something else
+

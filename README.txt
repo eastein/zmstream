@@ -1,6 +1,6 @@
 # Purpose
 
-ZMStream is a library for creating creating an iterable object for image frames from a ZoneMinder stream, other motion jpeg stream, or anything FFMPEG can handle.  Frames are emitted as `PIL.Image.Image` objects.
+ZMStream is a library for creating creating an iterable object for image frames from a ZoneMinder stream, other motion jpeg stream, or anything FFMPEG can handle.  Frames are emitted as `PIL.Image.Image` objects.  Additionally, motion jpeg server support is available as zmstream.Server.
 
 # Dependencies
 
@@ -23,3 +23,7 @@ Known to work:
 * ZoneMinder 1.22.x, 1.24.x
 * Rosewill RXS-3211
 * ABS MegaCam ABS-4210
+
+# zmstream.Server
+
+The zmstream.Server class transmits motion jpeg video.  You must create sockets and pass them to the server class, and then run the class. Regulary calling .send(img) on the server instance transmits your frames.  For convenience, 
