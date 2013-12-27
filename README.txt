@@ -1,6 +1,6 @@
 # Purpose
 
-ZMStream is a library for creating creating an iterable object for image frames from a ZoneMinder stream, other motion jpeg stream, or anything FFMPEG can handle.  Frames are emitted as `PIL.Image.Image` objects.  Additionally, motion jpeg server support is available as zmstream.Server.
+ZMStream is a library for creating creating an iterable object for image frames from a ZoneMinder stream, other Motion JPEG stream, or anything FFMPEG can handle.  Frames are emitted as `PIL.Image.Image` objects.  Additionally, Motion JPEG server support is available as zmstream.Server.
 
 # Dependencies
 
@@ -27,3 +27,8 @@ Known to work:
 # zmstream.Server
 
 The zmstream.Server class transmits motion jpeg video.  You must create sockets and pass them to the server class, and then run the class. Regulary calling .send(img) on the server instance transmits your frames.  For convenience, 
+
+# opencv pickup from raspberry pi hardware
+
+http://www.techradar.com/news/computing-components/peripherals/how-to-install-the-raspberry-pi-camera-module-1172034
+

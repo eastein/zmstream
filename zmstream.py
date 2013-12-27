@@ -351,7 +351,7 @@ class Server(threading.Thread) :
 	the completions of the inbound copies of the last FPS_TIMING_FRAMES frames. Until this
 	has been established, fps will be assumed to be DEFAULT_FPS.
 
-	Later features: handle more than one stream per socket; right now, we don't have any dispatch. One server is
+	Later features: handle more than one stream per server; right now, we don't have any dispatch. One server is
 	for one stream.
 	"""
 
@@ -359,6 +359,9 @@ class Server(threading.Thread) :
 	FPS_TIMING_FRAMES = 10
 	DEFAULT_FPS = 10
 	QUEUE_FRAMES = 1
+
+
+	# TODO analyze ~/git/gololgo network selecting socket code - make sure to handle all the same errors that it does.
 
 	class RetransmitterThread(threading.Thread) :
 		def __init__(self, src, dst, autorun=True) :
