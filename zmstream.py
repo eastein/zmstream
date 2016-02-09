@@ -10,7 +10,7 @@ import Queue
 import zmhash
 from PIL import ImageFile
 import socket
-
+import requests
 
 class ZMSException(Exception):
     pass
@@ -36,9 +36,10 @@ class Mode(object):
     MJPEG = 1
     FFMPEG = 2
     IMAGESDIR = 3
+    JPEGPOLL = 4
 
     st_min = 1
-    st_max = 3
+    st_max = 4
 
     @classmethod
     def check(cls, st):
@@ -130,6 +131,9 @@ class ZMStreamer(object):
         if self.mode == Mode.MJPEG:
             for f in self.generate_mjpeg():
                 yield f
+        elif self.mode == Mode.JPEGPOLL:
+            for f in self.generate_jpegpoll():
+                yield f
         elif self.mode == Mode.FFMPEG:
             for f in self.generate_ffmpeg():
                 yield f
@@ -138,6 +142,34 @@ class ZMStreamer(object):
                 yield f
         else:
             assert False  # what are you even doing, user? Do not meddle with the affairs of dragons.
+
+    def generate_jpegpoll(self):
+        auth_param = None
+        if self.auth:
+            auth_param = (self.auth[0], self.auth[1])
+
+        current_frame_rawdata = None
+
+        sess = requests.Session()
+        adapter = requests.adapters.HTTPAdapter(pool_connections=1, pool_maxsize=1)
+        sess.mount('http://', adapter)
+        sess.mount('https://', adapter)
+
+        while True:
+            self.abortcheck()
+
+            jpeg_response = sess.get(self.input_capture, auth=auth_param, headers={'Connection': 'close'}, timeout=5.0)
+            jpeg_response.request = None
+
+            if jpeg_response.status_code == 200:
+                p = ImageFile.Parser()
+                p.feed(jpeg_response.content)
+                try:
+                    yield p.close()
+                except IOError:
+                    print 'could not parse image... ignoring that...'
+            else:
+                print 'status code is %d which is not going to work..: body = %s' % (jpeg_response.status_code, repr(jpeg_response.content))
 
     def generate_imagesdir(self):
         existing_files = set(os.listdir(self.input_capture))
